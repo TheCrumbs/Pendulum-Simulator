@@ -2,30 +2,47 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Settings, Play, Pause, RotateCcw, Upload, Trash2 } from "lucide-react"
+import { Settings, Play, Pause, RotateCcw, Upload, Trash2, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useZoomAndPan } from "../hooks/useZoomAndPan"
 import { SettingsPanel } from "./SettingsPanel"
 import { ZoomControls } from "./ZoomControls"
 import { CodePanel } from "./CodePanel"
 import { PendulumVisualization } from "./PendulumVisualization"
+import { ImageSettingsModal } from "./ImageSettingsModal"
 import { useSimulator } from "../context/SimulatorContext"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
+/**
+ * Main component for the pendulum simulator
+ */
 export default function PendulumSimulatorContent() {
+  // UI state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isCodeOpen, setIsCodeOpen] = useState(false)
+  const [isImageSettingsOpen, setIsImageSettingsOpen] = useState(false)
+  
+  // Simulation state
   const { resetParams, params, isPlaying, setIsPlaying } = useSimulator()
+  
+  // Image state
   const [ballImage, setBallImage] = useState<string | null>(null)
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
+  
+  // Canvas state
   const [canvasSize, setCanvasSize] = useState({ width: 400, height: 400 })
   const [resetTrigger, setResetTrigger] = useState(0)
 
+  // References
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Zoom and pan functionality
   const { zoom, pan, isDragging, handleMouseDown, handleMouseMove, handleMouseUp, handleWheel, setZoom, setPan } =
     useZoomAndPan()
 
+  /**
+   * Handle file upload for ball or background images
+   */
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: "ball" | "background") => {
     const file = event.target.files?.[0]
     if (file) {
@@ -33,6 +50,8 @@ export default function PendulumSimulatorContent() {
       reader.onloadend = () => {
         if (type === "ball") {
           setBallImage(reader.result as string)
+          // Open image settings modal when a ball image is uploaded
+          setIsImageSettingsOpen(true)
         } else {
           setBackgroundImage(reader.result as string)
         }
@@ -42,6 +61,9 @@ export default function PendulumSimulatorContent() {
     event.target.value = ""
   }
 
+  /**
+   * Update canvas size when container size changes
+   */
   useEffect(() => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
@@ -54,8 +76,12 @@ export default function PendulumSimulatorContent() {
     return () => window.removeEventListener("resize", updateCanvasSize)
   }, [])
 
+  /**
+   * Reset the pendulum simulation
+   */
   const handleReset = () => {
     setIsPlaying(false)
+    resetParams()
     setResetTrigger((prev) => prev + 1)
   }
 
@@ -64,10 +90,14 @@ export default function PendulumSimulatorContent() {
       className="min-h-screen bg-[#f3fff8]"
       style={backgroundImage ? { backgroundImage: `url(${backgroundImage})`, backgroundSize: "cover" } : {}}
     >
-      <CodePanel isOpen={isCodeOpen} onToggle={() => setIsCodeOpen(!isCodeOpen)} />
+      {/* Panels */}
+      <CodePanel isOpen={isCodeOpen} onToggle={() => setIsCodeOpen(!isCodeOpen)} resetTrigger={resetTrigger} zoom={zoom} />
+      <ImageSettingsModal isOpen={isImageSettingsOpen} onClose={() => setIsImageSettingsOpen(false)} />
+      
       <main className="relative h-screen flex flex-col items-center justify-center p-4">
         {/* Toolbar */}
         <div className="absolute top-4 right-4 z-30 flex flex-col space-y-2">
+          {/* Ball Image Controls */}
           <div className="flex space-x-2">
             <TooltipProvider>
               <Tooltip>
@@ -81,21 +111,39 @@ export default function PendulumSimulatorContent() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            
             {ballImage && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => setBallImage(null)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Remove ball image</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={() => setIsImageSettingsOpen(true)}>
+                        <ImageIcon className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Adjust image settings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={() => setBallImage(null)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Remove ball image</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
             )}
           </div>
+          
+          {/* Background Image Controls */}
           <div className="flex space-x-2">
             <TooltipProvider>
               <Tooltip>
@@ -124,6 +172,8 @@ export default function PendulumSimulatorContent() {
               </TooltipProvider>
             )}
           </div>
+          
+          {/* Settings Button */}
           <div className="transition-all duration-300">
             <Button
               variant="ghost"
@@ -157,7 +207,7 @@ export default function PendulumSimulatorContent() {
           </Button>
         </div>
 
-        {/* File Upload Inputs */}
+        {/* File Upload Inputs (hidden) */}
         <input id="ball-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "ball")} />
         <input id="background-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "background")} />
 
@@ -198,8 +248,14 @@ export default function PendulumSimulatorContent() {
           />
         </div>
 
-        {/* Zoom Percentage */}
-        <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm rounded px-2 py-1 text-sm z-30">
+        {/* Zoom Percentage Display */}
+        <div 
+          className={`
+            absolute bottom-4 bg-white/80 backdrop-blur-sm rounded px-2 py-1 text-sm z-30
+            transition-all duration-300 ease-in-out
+            ${isCodeOpen ? 'left-[460px]' : 'left-4'}
+          `}
+        >
           Zoom: {(zoom * 100).toFixed(0)}%
         </div>
       </main>
