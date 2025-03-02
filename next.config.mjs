@@ -19,6 +19,8 @@ const nextConfig = {
   basePath: '',
   trailingSlash: true,
   reactStrictMode: true,
+  output: 'export',
+  distDir: 'out',
 }
 
 mergeConfig(nextConfig, userConfig)
