@@ -78,7 +78,7 @@ yarn dev
 
 ## Contributing
 
-I stole this README template from online and since this is for school and I will probably never come back to it, feel free to submit a Pull Request if you want.
+Feel free to submit a Pull Request if you want; this likely won't be maintained by me after my project is done.
 
 ## License
 
